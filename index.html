@@ -1,0 +1,207 @@
+<!-- We ♥ UTF8 -->
+<!DOCTYPE html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Piedra, Papel, Tijera, Lagarto, Spock (contra una red neuronal)</title>
+		<style type="text/css">
+			body {
+				font-family:"Segoe UI Emoji";
+			}
+
+			#lblResultado {
+				font-size:180%;
+				font-weight:bold;
+			}
+
+			/* ESTILOS DE LOS BOTONES */
+
+			button {
+				width:120px;
+				margin-bottom:5px;
+				cursor:pointer;
+			}
+
+			button:hover {
+				background:#cfc;
+			}
+
+			/* ESTILOS DE LA TABLA */
+
+			table td, table th {
+				padding:5px;
+				font-size:80%;
+			}
+
+			table td {
+				vertical-align:top;
+				text-align:left;
+			}
+
+			table th {
+				border-bottom:2px solid black;
+				text-align:center;
+			}
+
+			table td.center {
+				background-color:#eee;
+				text-align:center;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Piedra, Papel, Tijera, Lagarto, Spock (contra una red neuronal)</h1>
+		<p>
+				<span id="lblPartidasJugadas">Partidas jugadas: <span class="value">0</span></span><br />
+				<span id="lblPorcentajeDeVictorias">Porcentaje de victorias de la IA (total): <span class="value">0</span>%</span><br />
+				<span id="lblPorcentajeDeVictoriasUltimas">Porcentaje de victorias de la IA (últimas 20): <span class="value">0</span>%</span>
+		</p>
+		<p id="elecciones">
+			<button id="btnPiedra">⛰ Piedra (1)</button><br />
+			<button id="btnPapel">📄 Papel (2)</button><br />
+			<button id="btnTijera">✂ Tijera (3)</button><br />
+			<button id="btnLagarto">🐊 Lagarto (4)</button><br />
+			<button id="btnSpock">👦 Spock (5)</button>
+		</p>
+		<p id="lblMovidaJugador">☺ Elegiste: <span class="value">&ndash;</span></p>
+		<p id="lblMovidaIA">😈 La IA eligió: <span class="value">&ndash;</span></p>
+		<p id="lblResultado">&nbsp;</p>
+		<p>
+			<button id="btnMostrarTabla">Ver IA</button>
+			<button id="btnEntrenar50">Entrenar x50</button>
+			<button id="btnEntrenar100">Entrenar x100</button>
+			<button id="btnEntrenar1000">Entrenar x1000</button>
+		</p>
+		<div id="tabla" style="display:none;"></div>
+
+		<script src="lib/jquery-3.3.1.slim.min.js"></script>
+		<script src="js/Matrix.js"></script>
+		<script src="js/NeuralNetwork.js"></script>
+
+		<script>
+			// Creamos una red neuronal con 5 inputs, 1 capa oculta y 5 outputs
+			let nn = new NeuralNetwork([5, 20, 5]);
+			// Configuramos una tasa de aprendizaje alta, porque el problema es binario (ganaste/perdiste)
+			nn.setLearningRate(0.1);
+
+			// Algunas variables globales para el juego
+			let historial_partidas = [];
+			let nombres_opciones = ["Piedra", "Papel", "Tijera", "Lagarto", "Spock"];
+
+			$(function() {
+				// Atajos de teclado para los botones
+				$(document).keyup(function(e) {
+					if (e.keyCode == 49) $("#btnPiedra").click();
+					if (e.keyCode == 50) $("#btnPapel").click();
+					if (e.keyCode == 51) $("#btnTijera").click();
+					if (e.keyCode == 52) $("#btnLagarto").click();
+					if (e.keyCode == 53) $("#btnSpock").click();
+				});
+
+				// Eventos de los botones
+				$("#btnPiedra").click(function() { jugar(0); });
+				$("#btnPapel").click(function() { jugar(1); });
+				$("#btnTijera").click(function() { jugar(2); });
+				$("#btnLagarto").click(function() { jugar(3); });
+				$("#btnSpock").click(function() { jugar(4); });
+				$("#btnMostrarTabla").click(function() { $("#tabla").toggle(); });
+				$("#btnEntrenar50").click(function() { entrenar(50); });
+				$("#btnEntrenar100").click(function() { for (i=0;i<100;i++) juegoAleatorio(); });
+				$("#btnEntrenar1000").click(function() { for (i=0;i<1000;i++) juegoAleatorio(); });
+
+				// Visualizamos la tabla de valores de la red neuronal cada 500ms
+				setInterval(function() {
+					if ($("#tabla").is(":visible")) {
+						$("#tabla").html(nn.visualize());
+					}
+				}, 500);
+			});
+
+			// Función que procesa la partida
+			function jugar(movida_jugador) {
+				// Mostramos la elección del usuario
+				$("#lblMovidaJugador .value").text(nombres_opciones[movida_jugador]);
+
+				// Creamos la matriz de inputs llena de 0s
+				let inputs = [0, 0, 0, 0, 0];
+
+				// Le damos un valor de 1 a la opción que eligió el usuario
+				inputs[movida_jugador] = 1;
+
+				// Pasamos los inputs a la IA
+				let outputs = nn.feedForward(inputs);
+
+				// De entre los outputs, tomamos el más alto como la movida de la IA
+				let movida_ia = NeuralNetwork.getHighestIndex(outputs);
+
+				// Mostramos la eleccion de la IA
+				$("#lblMovidaIA .value").text(nombres_opciones[movida_ia]);
+
+				// Resolvemos la partida y entrenamos la IA con el resultado
+				// Si la IA ganó...
+				if (
+					movida_jugador == 0 && movida_ia == 1 || movida_jugador == 0 && movida_ia == 4 ||
+					movida_jugador == 1 && movida_ia == 2 || movida_jugador == 1 && movida_ia == 3 ||
+					movida_jugador == 2 && movida_ia == 0 || movida_jugador == 2 && movida_ia == 4 ||
+					movida_jugador == 3 && movida_ia == 0 || movida_jugador == 3 && movida_ia == 2 ||
+					movida_jugador == 4 && movida_ia == 1 || movida_jugador == 4 && movida_ia == 3
+				) {
+					// Entrenamos con ese resultado
+					nn.train(inputs, outputs);
+					// Sumamos la victoria al tanteador
+					historial_partidas.push(1);
+					// Mostramos el resultado
+					$("#lblResultado").text("¡Ganó la IA!");
+					$("#lblResultado").css("color", "red");
+				}
+
+				// Si la IA no ganó...
+				else {
+					// Calculamos las movidas correctas
+					let respuesta_correcta;
+					if (movida_jugador == 0) movidas_correctas = [0, 1, 0, 0, 1];
+					if (movida_jugador == 1) movidas_correctas = [0, 0, 1, 1, 0];
+					if (movida_jugador == 2) movidas_correctas = [1, 0, 0, 0, 1];
+					if (movida_jugador == 3) movidas_correctas = [1, 0, 1, 0, 0];
+					if (movida_jugador == 4) movidas_correctas = [0, 1, 0, 1, 0];
+					// Entrenamos con el resultado que tendría que haber elegido
+					nn.train(inputs, movidas_correctas);
+					// Sumamos la derrota al tanteador
+					historial_partidas.push(0);
+					// Mostramos el resultado
+					$("#lblResultado").text("¡Ganaste!");
+					$("#lblResultado").css("color", "green");
+				}
+				
+				// Actualizamos y mostramos los tanteadores
+				$("#lblPartidasJugadas .value").text(historial_partidas.length);
+
+				// Mostramos el porcentaje de victorias
+				let victorias_total = historial_partidas.reduce((a, b) => a+b);
+				let porcentaje_total = Math.floor(victorias_total / historial_partidas.length * 100);
+				$("#lblPorcentajeDeVictorias .value").text(porcentaje_total);
+				
+				let ultimas = historial_partidas.slice(-20);
+				let victorias_ultimas = ultimas.reduce((a, b) => a+b);
+				let porcentaje_ultimas = Math.floor(victorias_ultimas / ultimas.length * 100);
+				$("#lblPorcentajeDeVictoriasUltimas .value").text(porcentaje_ultimas);
+			}
+
+			// Jugar automáticamente N veces
+			function entrenar(n) {
+				let entrenamientos = 0;
+				let interval = setInterval(function() {
+					entrenamientos++;
+					juegoAleatorio();
+					if (n == entrenamientos) clearInterval(interval);
+				}, 25);
+			}
+
+			function juegoAleatorio() {
+				let eleccion_jugador = Math.floor(Math.random() * 5);
+				jugar(eleccion_jugador);
+			}
+		</script>
+	</body>
+</html>

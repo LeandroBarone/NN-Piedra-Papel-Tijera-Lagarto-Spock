@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Visualizar XOR</title>
+		<style type="text/css">
+		</style>
+	</head>
+	<body>
+		<div id="canvas-container" style="font-size:80%;"></div>
+		<div id="confianza"></div>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.6.1/p5.min.js"></script>
+		<script src="js/Matrix.js"></script>
+		<script src="js/NeuralNetwork.js"></script>
+		<script>
+			let canvas;
+			let nn;
+			let training_data = [
+				[[0, 0], [0]],
+				[[0, 1], [1]],
+				[[1, 0], [1]],
+				[[1, 1], [0]],
+			];
+
+			function setup() {
+				canvas = createCanvas(400, 400);
+				canvas.parent("canvas-container");
+				background(0);
+				noStroke();
+				nn = new NeuralNetwork([2, 4, 1]);
+			}
+
+			function draw() {
+				for (let i = 0; i < 1000; i++) {
+					let rd = training_data[Math.floor(Math.random() * training_data.length)];
+					nn.train(rd[0], rd[1], 0.1);
+				}
+
+				let size = width / 10;
+
+				for (let i = 0; i < size; i++) {
+					for (let j = 0; j < size; j++) {
+						let output = nn.feedForward([i/10, j/10]);
+						fill(output[0] * 255);
+						rect(i*10, j*10, size, size);
+					}
+				}
+
+				fill(255, 0, 0);
+
+				let r1 = nn.feedForward([0,0])[0].toFixed(2);
+				let r2 = nn.feedForward([1,1])[0].toFixed(2);
+				let r3 = nn.feedForward([1,0])[0].toFixed(2);
+				let r4 = nn.feedForward([0,1])[0].toFixed(2);
+
+				let text = `
+				`;
+
+				document.getElementById("confianza").innerHTML = `
+					[0,0] = ${r1}<br />
+					[1,1] = ${r2}<br />
+					[1,0] = ${r3}<br />
+					[0,1] = ${r4}
+				`;
+			}
+		</script>
+	</body>
+</html>
